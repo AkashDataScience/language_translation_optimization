@@ -22,7 +22,7 @@ class FeedForwardBlock(nn.Module):
         self.linear_2 = nn.Linear(d_ff, d_model)
 
     def forward(self, x):
-        x = torch.relu(self.linear_1(x))
+        x = torch.nn.functional.gelu(self.linear_1(x))
         x = self.dropout(x)
         x = self.linear_2(x)
         return x

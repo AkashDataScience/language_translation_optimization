@@ -2,6 +2,7 @@ from model import build_transformer
 from dataset import BillingualDataset, casual_mask
 from config_file import get_config, get_weights_file_path
 
+import random
 import torchtext.datasets as datasets
 import torch
 torch.cuda.amp.autocast(enabled = True)
@@ -9,6 +10,7 @@ torch.cuda.amp.autocast(enabled = True)
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim.lr_scheduler import LambdaLR
+from lion_pytorch import Lion
 
 import warnings
 from tqdm import tqdm
@@ -25,7 +27,6 @@ import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
 
 torch.cuda.empty_cache()
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:22240"
 config = get_config()
 
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
@@ -129,10 +130,124 @@ def get_or_build_tokenizer(config, ds, lang):
 
     return tokenizer
 
+def process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang):
+    src_ids_list = []
+    tgt_ids_list = []
+
+    max_len_src = 0
+    max_len_tgt = 0
+
+    for item in ds_raw:
+        src_ids = tokenizer_src.encode(item['translation'][src_lang]).ids
+        tgt_ids = tokenizer_tgt.encode(item['translation'][tgt_lang]).ids
+        src_ids_list.append(src_ids)
+        tgt_ids_list.append(tgt_ids)
+        max_len_src = max(max_len_src, len(src_ids))
+        max_len_tgt = max(max_len_tgt, len(tgt_ids))
+
+    print(f"Max length of the source sentence before processing: {max_len_src}")
+    print(f"Max length of the source target before processing: {max_len_tgt}")
+
+    ds_dict = ds_raw.to_dict()
+
+    print(f"Removing sentences based on ratio between lenght of {src_lang} and {tgt_lang} sentences")
+    pbar = tqdm(total=len(src_ids_list))
+    index = 0
+    while index < len(src_ids_list):
+        src_token_count = len(src_ids_list[index])
+        tgt_token_count = len(tgt_ids_list[index])
+        if (src_token_count>100 or tgt_token_count>100) and (src_token_count/tgt_token_count > 2 or tgt_token_count/src_token_count > 2):
+            del src_ids_list[index]
+            del tgt_ids_list[index]
+            del ds_dict['id'][index]
+            del ds_dict['translation'][index]
+            index -= 1
+        index += 1
+        pbar.update(index)
+
+    print("Spliting long sent sentences")
+    pbar = tqdm(total=len(src_ids_list))
+    new_lenth = 100
+    new_id = int(ds_dict['id'][-1])
+    index = 0
+    while index < len(src_ids_list):
+        src_token_count = len(src_ids_list[index])
+        tgt_token_count = len(tgt_ids_list[index])
+        if src_token_count > new_lenth or tgt_token_count > new_lenth:
+            num_division = 2
+            new_src_token_count = src_token_count//num_division
+            new_tgt_token_count = tgt_token_count//num_division
+            while new_src_token_count > new_lenth or new_tgt_token_count > new_lenth:
+                num_division += 1
+                new_src_token_count = src_token_count//num_division
+                new_tgt_token_count = tgt_token_count//num_division
+            token_count_src = 0
+            token_count_tgt = 0
+            for _ in range(num_division):
+                sentance_src = src_ids_list[index][token_count_src : token_count_src + new_src_token_count]
+                sentance_tgt = tgt_ids_list[index][token_count_tgt : token_count_tgt + new_tgt_token_count]
+                src_ids_list.append(sentance_src)
+                tgt_ids_list.append(sentance_tgt)
+                ds_dict['id'].append(str(new_id))
+                ds_dict['translation'].append({src_lang: tokenizer_src.decode(sentance_src), tgt_lang: tokenizer_tgt.decode(sentance_tgt)})
+                new_id += 1
+                token_count_src += new_src_token_count
+                token_count_tgt += new_tgt_token_count
+            del src_ids_list[index]
+            del tgt_ids_list[index]
+            del ds_dict['id'][index]
+            del ds_dict['translation'][index]
+            index -= 1
+        index += 1
+        pbar.update(index)
+    
+    print("Sorting by length")
+    id, translation, src_ids_list, tgt_ids_list = zip(*[(x, y, z, w) for x, y, z, w in
+                                                    sorted(zip(ds_dict['id'], ds_dict['translation'], src_ids_list, tgt_ids_list),
+                                                            key=lambda x: len(x[2]))])
+    ds_dict['id'] = id
+    ds_dict['translation'] = translation
+
+    print("Combining inputs")
+    half_lenght = len(ds_dict['id'])//2
+    ds_dict_half1 = {'id':ds_dict['id'][:half_lenght], 'translation':ds_dict['translation'][:half_lenght]}
+    ds_dict_half1['id'].reverse()
+    ds_dict_half1['translation'].reverse()
+    ds_dict_half2 = {'id':ds_dict['id'][half_lenght:], 'translation':ds_dict['translation'][half_lenght:]}
+    combined_sentances = [{src_lang: x[src_lang] + " " + y[src_lang], tgt_lang: x[tgt_lang] + " " + y[tgt_lang]}
+                        for x,y in zip(ds_dict_half1['translation'], ds_dict_half2['translation'])]
+    ds_dict_half2['translation'] = combined_sentances
+
+    ds_raw = Dataset.from_dict(ds_dict_half2, features=ds_raw.features)
+
+    return ds_raw
+
+def select_random_batches(ds_raw):
+    ds_dict = ds_raw.to_dict()
+    id_list = []
+    translation_list = []
+
+    print("Creating random batches")
+    while len(ds_dict['id']) > 0:  
+
+        to_take = min(config["batch_size"], len(ds_dict['id']))
+        select = random.randint(0, len(ds_dict['id']) - to_take)
+        ids = ds_dict['id'][select:(select + to_take)]
+        translations = ds_dict['translation'][select:(select + to_take)]
+        id_list.extend(ids)
+        translation_list.extend(translations)
+        del ds_dict['id'][select:select + to_take]
+        del ds_dict['translation'][select:select + to_take]
+
+    ds_dict['id'] = id_list
+    ds_dict['translation'] = translation_list
+    ds_raw = Dataset.from_dict(ds_dict, features=ds_raw.features)
+    return ds_raw
+
 
 def get_ds(config):
     
-    ds_raw = load_dataset('opus_books', f"{config['lang_src']}-{config['lang_tgt']}", split = 'train')  
+    ds_raw = load_dataset('opus_books', f"{config['lang_src']}-{config['lang_tgt']}", split = 'train')
     
     src_lang = config["lang_src"]
     tgt_lang = config["lang_tgt"]
@@ -140,10 +255,14 @@ def get_ds(config):
     
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, src_lang)
     tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, tgt_lang)
+
+    ds_raw = process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang)
     
     train_ds_size = int(0.9 * len(ds_raw))
     val_ds_size = len(ds_raw) - train_ds_size
     train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
+
+    train_ds_raw = select_random_batches(train_ds_raw)
     
     train_ds = BillingualDataset(train_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len)
     val_ds = BillingualDataset(val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len)
@@ -160,10 +279,41 @@ def get_ds(config):
     print(f"Max length of the source sentence : {max_len_src}")
     print(f"Max length of the source target : {max_len_tgt}")
     
-    train_dataloader = DataLoader(train_ds, batch_size = config["batch_size"], shuffle = True)
-    val_dataloader = DataLoader(val_ds, batch_size = 1, shuffle = True)
+    train_dataloader = DataLoader(train_ds, batch_size = config["batch_size"], shuffle = False)
+    val_dataloader = DataLoader(val_ds, batch_size = 1, shuffle = False)
     
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
+
+def collate_fn(batch):
+    encoder_input_max = max(x['encoder_str_length'] for x in batch)
+    decoder_input_max = max(x['decoder_str_length'] for x in batch)
+
+    encoder_inputs = []
+    decoder_inputs = []
+    encoder_mask = []
+    decoder_mask = []
+    label = []
+    src_text = []
+    tgt_text = []
+
+    for b in batch:
+        encoder_inputs.append(b["encoder_input"][:encoder_input_max])
+        decoder_inputs.append(b["decoder_input"][:decoder_input_max])
+        encoder_mask.append((b["encoder_mask"][0, 0, :encoder_input_max]).unsqueeze(0).unsqueeze(0).unsqueeze(0).int())
+        decoder_mask.append((b["decoder_mask"][0, :decoder_input_max, :decoder_input_max]).unsqueeze(0).unsqueeze(0))
+        label.append(b["label"][:decoder_input_max])
+        src_text.append(b['src_text'])
+        tgt_text.append(b['tgt_text'])
+    
+    return {
+        "encoder_input": torch.vstack(encoder_inputs),
+        "decoder_input": torch.vstack(decoder_inputs),
+        "encoder_mask": torch.vstack(encoder_mask),
+        "decoder_mask": torch.vstack(decoder_mask),
+        "label": torch.vstack(label),
+        "src_text": src_text,
+        "tgt_text": tgt_text
+    }
 
 
 def get_model(config, src_vocab_size, tgt_vocab_size):
@@ -184,7 +334,19 @@ def train_model(config):
     
     #Adam is used to train each feature with a different learning rate. 
     #If some feature is appearing less, adam takes care of it
-    optimizer = torch.optim.Adam(model.parameters(), lr = config["lr"], eps = 1e-9)
+    #optimizer = torch.optim.Adam(model.parameters(), lr = config["lr"], eps = 1e-9)
+    optimizer = Lion(model.parameters(), lr=config['lr'], weight_decay=1e-2)
+
+    max_lr = 10**-4
+    steps_per_epoch = len(train_dataloader)
+
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=steps_per_epoch,
+                                                    epochs=config["num_epochs"],
+                                                    pct_start=int(0.3*config["num_epochs"])/config["num_epochs"],
+                                                    div_factor=100,
+                                                    three_phase=False,
+                                                    final_div_factor=100,
+                                                    anneal_strategy="linear")
     
     initial_epoch = 0
     global_step = 0
@@ -201,6 +363,7 @@ def train_model(config):
         
     loss_fn = nn.CrossEntropyLoss(ignore_index = tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1)
     
+    scaler = torch.cuda.amp.GradScaler()
     for epoch in range(initial_epoch, config["num_epochs"]):
         torch.cuda.empty_cache()
         print(epoch)
@@ -213,15 +376,16 @@ def train_model(config):
             encoder_mask = batch["encoder_mask"].to(device)
             decoder_mask = batch["decoder_mask"].to(device)
             
-            encoder_output = model.encode(encoder_input, encoder_mask)
-            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask)
-            proj_output = model.project(decoder_output)
-            
-            label = batch["label"].to(device)
-            
-            #Compute loss using cross entropy
-            tgt_vocab_size = tokenizer_tgt.get_vocab_size()
-            loss = loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                encoder_output = model.encode(encoder_input, encoder_mask)
+                decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask)
+                proj_output = model.project(decoder_output)
+                
+                label = batch["label"].to(device)
+                
+                #Compute loss using cross entropy
+                tgt_vocab_size = tokenizer_tgt.get_vocab_size()
+                loss = loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
 
             #Log the loss
@@ -229,11 +393,17 @@ def train_model(config):
             writer.flush()
             
             #Backpropogate loss
-            loss.backward()
+            # loss.backward()
+            scaler.scale(loss).backward()
             
             #Update weights
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
+            #optimizer.step()
+            scale = scaler.get_scale()
+            scaler.step(optimizer)
+            scaler.update()
+            skip_lr_sched = (scale > scaler.get_scale())
+            if not skip_lr_sched:
+                scheduler.step()
             global_step+=1
             
         #run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, writer, global_step)

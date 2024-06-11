@@ -79,7 +79,9 @@ class BillingualDataset(Dataset):
             # Will get 0 for all pads. And 0 for earlier text.
             "label": label,
             "src_text": src_text,
-            "tgt_text": tgt_text
+            "tgt_text": tgt_text,
+            "encoder_str_length": len(enc_input_tokens),
+            "decoder_str_length": len(dec_input_tokens)
             }
     
 def casual_mask(size):
