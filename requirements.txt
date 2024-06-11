@@ -17,7 +17,7 @@ executing==2.0.1
 filelock==3.13.1
 fonttools==4.53.0
 frozenlist==1.4.1
-fsspec==2024.2.0
+fsspec==2023.6.0
 grpcio==1.64.1
 huggingface-hub==0.23.1
 idna==3.7
@@ -43,7 +43,7 @@ nest-asyncio==1.6.0
 networkx==3.2.1
 numpy==1.26.3
 packaging==24.0
-pandas==2.2.2
+pandas==2.2.1
 parso==0.8.4
 pillow==10.2.0
 platformdirs==4.2.2
@@ -51,7 +51,7 @@ prompt_toolkit==3.0.45
 protobuf==4.25.3
 psutil==5.9.8
 pure-eval==0.2.2
-pyarrow==16.1.0
+pyarrow==15.0.0
 pyarrow-hotfix==0.6
 Pygments==2.18.0
 pyparsing==3.1.2
