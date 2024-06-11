@@ -48,7 +48,7 @@ parso==0.8.4
 pillow==10.0.1
 platformdirs==4.2.2
 prompt_toolkit==3.0.45
-protobuf==4.25.3
+protobuf==3.20.3
 psutil==5.9.8
 pure-eval==0.2.2
 pyarrow==14.0.2
@@ -65,7 +65,7 @@ six==1.16.0
 stack-data==0.6.3
 sympy==1.12
 tbb==2021.11.0
-tensorboard==2.17.0
+tensorboard==2.15.2
 tensorboard-data-server==0.7.2
 tokenizers==0.19.1
 torch==2.3.0+cu121
