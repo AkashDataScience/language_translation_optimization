@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 
 from datasets import load_dataset
+from datasets import Dataset as HugDataset
 from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from tokenizers.trainers import WordLevelTrainer
@@ -214,7 +215,7 @@ def process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang):
                         for x,y in zip(ds_dict_half1['translation'], ds_dict_half2['translation'])]
     ds_dict_half2['translation'] = combined_sentances
 
-    ds_raw = Dataset.from_dict(ds_dict_half2, features=ds_raw.features)
+    ds_raw = HugDataset.from_dict(ds_dict_half2, features=ds_raw.features)
 
     return ds_raw
 
@@ -237,7 +238,7 @@ def select_random_batches(ds_raw):
 
     ds_dict['id'] = id_list
     ds_dict['translation'] = translation_list
-    ds_raw = Dataset.from_dict(ds_dict, features=ds_raw.features)
+    ds_raw = HugDataset.from_dict(ds_dict, features=ds_raw.features)
     return ds_raw
 
 
