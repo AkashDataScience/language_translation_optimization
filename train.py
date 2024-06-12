@@ -151,7 +151,6 @@ def process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang):
     ds_dict = ds_raw.to_dict()
 
     print(f"Removing sentences based on ratio between lenght of {src_lang} and {tgt_lang} sentences")
-    pbar = tqdm(total=len(src_ids_list))
     index = 0
     while index < len(src_ids_list):
         src_token_count = len(src_ids_list[index])
@@ -163,10 +162,8 @@ def process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang):
             del ds_dict['translation'][index]
             index -= 1
         index += 1
-        pbar.update(index)
 
     print("Spliting long sent sentences")
-    pbar = tqdm(total=len(src_ids_list))
     new_lenth = 100
     new_id = int(ds_dict['id'][-1])
     index = 0
@@ -199,14 +196,13 @@ def process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang):
             del ds_dict['translation'][index]
             index -= 1
         index += 1
-        pbar.update(index)
     
     print("Sorting by length")
     id, translation, src_ids_list, tgt_ids_list = zip(*[(x, y, z, w) for x, y, z, w in
                                                     sorted(zip(ds_dict['id'], ds_dict['translation'], src_ids_list, tgt_ids_list),
                                                             key=lambda x: len(x[2]))])
-    ds_dict['id'] = id
-    ds_dict['translation'] = translation
+    ds_dict['id'] = list(id)
+    ds_dict['translation'] = list(translation)
 
     print("Combining inputs")
     half_lenght = len(ds_dict['id'])//2
