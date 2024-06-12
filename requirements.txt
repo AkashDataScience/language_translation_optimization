@@ -8,9 +8,6 @@ jedi==0.19.1
 lightning-utilities==0.11.2
 lion-pytorch==0.1.4
 multiprocess==0.70.16
-packaging==24.0
-pandas==2.0.3
-parso==0.8.4
 pillow==10.0.1
 platformdirs==4.2.2
 prompt_toolkit==3.0.45
