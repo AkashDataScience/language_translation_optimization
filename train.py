@@ -254,11 +254,11 @@ def get_ds(config):
     tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, tgt_lang)
 
     ds_raw = process_data(ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang)
-    
+
     train_ds_size = int(0.9 * len(ds_raw))
     val_ds_size = len(ds_raw) - train_ds_size
     train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
-
+    train_ds_raw = HugDataset.from_list(train_ds_raw, features=ds_raw.features)
     train_ds_raw = select_random_batches(train_ds_raw)
     
     train_ds = BillingualDataset(train_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len)
