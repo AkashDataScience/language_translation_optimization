@@ -2,11 +2,8 @@ asttokens==2.4.1
 colorama==0.4.6
 comm==0.2.2
 datasets==2.19.1
-decorator==4.4.2
 dill==0.3.8
 executing==2.0.1
-filelock==3.13.1
-fonttools==4.53.0
 frozenlist==1.4.1
 fsspec==2023.6.0
 grpcio==1.64.1
