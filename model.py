@@ -84,8 +84,9 @@ class MultiHeadAttentionBlock(nn.Module):
     def attention(query, key, value, mask, dropout: nn.Dropout):
         d_k = query.shape[-1]
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+        _MASKING_VALUE = -1e+30 if attention_scores.dtype == torch.float32 else -1e+4
         if mask is not None:
-            attention_scores.masked_fill_(mask == 0, -1e9)
+            attention_scores.masked_fill_(mask == 0, value=_MASKING_VALUE)
         attention_scores = attention_scores.softmax(dim=-1)
         if dropout is not None:
             attention_scores = dropout(attention_scores)
