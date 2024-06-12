@@ -10,10 +10,6 @@ lion-pytorch==0.1.4
 multiprocess==0.70.16
 pure-eval==0.2.2
 stack-data==0.6.3
-sympy==1.12
-tbb==2021.11.0
-tensorboard==2.15.2
-tensorboard-data-server==0.7.2
 tokenizers==0.19.1
 torch==2.3.0+cu121
 torchaudio==2.3.0+cu121
