@@ -368,6 +368,7 @@ def train_model(config):
         batch_iterator = tqdm(train_dataloader, desc = f"Processing Epoch {epoch:02d}")
         
         for batch in batch_iterator:
+            optimizer.zero_grad(set_to_none=True)
             encoder_input = batch["encoder_input"].to(device)
             decoder_input = batch["decoder_input"].to(device)
             encoder_mask = batch["encoder_mask"].to(device)
