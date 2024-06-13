@@ -334,7 +334,7 @@ def train_model(config):
     #optimizer = torch.optim.Adam(model.parameters(), lr = config["lr"], eps = 1e-9)
     optimizer = Lion(model.parameters(), lr=config['lr'], weight_decay=1e-2)
 
-    max_lr = 10**-4
+    max_lr = config['lr']*10
     steps_per_epoch = len(train_dataloader)
 
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=steps_per_epoch,
