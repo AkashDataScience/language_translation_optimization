@@ -1,12 +1,13 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
-# Language translation with transformers
-This the main repo for all natural language processing related projects
+## :jigsaw: Objective
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be writing same code over and over again
-* You should reuse code as much as possible
+- Pick language traslation dataset from opus_books
+- Perform data analysis
+- Optimize training loop based on data analysis
+- Use One Cycle Policy and Automatic Mixed Precision to reduce training time
+- Use Lion optimizer
+- Train encoder-decoder transformer model for language translation task
 
 ## Prerequisites
 * [![Python][Python.py]][python-url]
