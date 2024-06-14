@@ -94,6 +94,11 @@ Please refer to [ERA V2 Session 18](https://github.com/AkashDataScience/ERA-V2/t
 Akash Shah - akashmshah19@gmail.com  
 Project Link - [ERA V2](https://github.com/AkashDataScience/ERA-V2/tree/master)
 
+## Acknowledgments
+This repo is developed using references listed below:
+* [Attention Is All You Need](https://arxiv.org/pdf/1706.03762)
+* [Speeding up Transformer w/ Optimization Strategies](https://www.kaggle.com/code/rhtsingh/speeding-up-transformer-w-optimization-strategies)
+* [lion-pytorch Optimizer](https://github.com/lucidrains/lion-pytorch)
 
 
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
