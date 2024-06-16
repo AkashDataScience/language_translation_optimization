@@ -22,7 +22,7 @@
 - [**dataset.py**](dataset.py)
     - This file contains dataset class for translation task
 - [**model.py**](model.py)
-    - This file contains all the building blocks require to make Encoder-Decoder transformet model
+    - This file contains all the building blocks require to make Encoder-Decoder transformer model
 - [**train.py**](train.py)
     - This is the main file of this project
     - It uses functions available in `dataset.py` and `model.py`.
