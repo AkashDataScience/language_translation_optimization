@@ -33,7 +33,7 @@ The model is implemented based on Attention Is All You Need paper. The transform
 structured with N Encoder-Decoder blocks, each incorporating multi-head attention mechanisms. Our
 specific model consists of 6 such blocks. Tokens undergo embedding into 512-dimensional vectors
 (d_model), and each block employs multi-head attention with 8 heads (h), succeeded by feed-forward
-networks with a size of 128 (d_ff). Additionally, positional encodings are integrated to account for
+networks with a size of 2048 (d_ff). Additionally, positional encodings are integrated to account for
 sequence context, and the decoder's output is projected onto the target vocabulary for translation.
 
 **Model Dimensions:**
