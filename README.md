@@ -26,7 +26,7 @@
 - [**train.py**](train.py)
     - This is the main file of this project
     - It uses functions available in `dataset.py` and `model.py`.
-    - Most of the opimization techniques are imaplimented in this file 
+    - Most of the opimization techniques are implemented in this file 
 
 ## :building_construction: Model Architecture
 The model is implemented based on Attention Is All You Need paper. The transformer architecture is
